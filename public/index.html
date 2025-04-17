@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Panel de Administración</h1>
+
+    <!-- LOGIN -->
+    <div id="loginForm" class="bg-white p-6 rounded shadow-md max-w-md mx-auto mb-6">
+      <h2 class="text-xl font-semibold mb-4">Iniciar Sesión</h2>
+      <input id="email" type="email" placeholder="Correo electrónico" class="w-full p-2 mb-2 border rounded" />
+      <input id="password" type="password" placeholder="Contraseña" class="w-full p-2 mb-4 border rounded" />
+      <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Entrar</button>
+    </div>
+
+    <div id="panel" class="hidden">
+      <!-- BOTONES DE CRUD -->
+      <div class="flex flex-wrap gap-4 justify-center mb-4">
+        <button onclick="listar('users')" class="bg-green-500 text-white px-4 py-2 rounded">Usuarios</button>
+        <button onclick="listar('roles')" class="bg-purple-500 text-white px-4 py-2 rounded">Roles</button>
+        <button onclick="listar('permisos')" class="bg-yellow-500 text-white px-4 py-2 rounded">Permisos</button>
+      </div>
+
+      <!-- FORMULARIO PARA AGREGAR ROL -->
+      <div id="agregarRol" class="mb-4">
+        <input id="nombreRol" type="text" placeholder="Nombre del rol" class="w-full p-2 mb-2 border rounded" />
+        <button onclick="agregarRol()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Agregar Rol</button>
+      </div>
+
+      <!-- FORMULARIO PARA AGREGAR PERMISO -->
+      <div id="agregarPermiso" class="mb-4">
+        <input id="nombrePermiso" type="text" placeholder="Nombre del permiso" class="w-full p-2 mb-2 border rounded" />
+        <button onclick="agregarPermiso()" class="w-full bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600">Agregar Permiso</button>
+      </div>
+
+      <!-- RESULTADO CRUD -->
+      <div id="resultado" class="bg-white p-4 rounded shadow"></div>
+    </div>
+  </div>
+
+  <script>
+    let token = '';
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (data.token) {
+        token = data.token;
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('panel').classList.remove('hidden');
+      } else {
+        alert(data.error || 'Error al iniciar sesión');
+      }
+    }
+
+    async function listar(tipo) {
+      const url = tipo === 'users' ? '/listar/users'
+                : tipo === 'roles' ? '/listar/roles'
+                : '/listar/permisos';
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      mostrarResultado(tipo, data);
+    }
+
+    function mostrarResultado(tipo, data) {
+      const resultado = document.getElementById('resultado');
+      resultado.innerHTML = '';
+
+      if (!Array.isArray(data)) {
+        resultado.innerHTML = `<p class="text-red-500">Error al obtener datos</p>`;
+        return;
+      }
+
+      const tabla = document.createElement('table');
+      tabla.className = 'w-full border-collapse border';
+
+      const headers = Object.keys(data[0] || {}).map(k => `<th class="border p-2 bg-gray-200">${k}</th>`).join('');
+      tabla.innerHTML = `<thead><tr>${headers}</tr></thead><tbody>
+        ${data.map(row => `
+          <tr>${Object.values(row).map(val => `<td class="border p-2">${val}</td>`).join('')}
+          <td class="border p-2">
+            <button onclick="eliminar('${tipo}', ${row.id})" class="text-red-500 hover:text-red-700">Eliminar</button>
+          </td>
+          </tr>
+        `).join('')}
+      </tbody>`;
+
+      resultado.appendChild(tabla);
+    }
+
+    async function eliminar(tipo, id) {
+   let url = '';
+   let body = { id };
+
+   // Aquí se usa el método POST en lugar de DELETE
+   if (tipo === 'roles') {
+     url = '/eliminar/rol';
+   } else if (tipo === 'permisos') {
+     url = '/eliminar/permiso';
+   } else {
+     return;  // Si no es ni roles ni permisos, no hacer nada
+   }
+
+   const res = await fetch(url, {
+     method: 'POST',  // Cambiado de DELETE a POST
+     headers: {
+       'Content-Type': 'application/json',
+       'Authorization': `Bearer ${token}`
+     },
+     body: JSON.stringify(body)  // El cuerpo contiene el ID
+   });
+
+   const data = await res.json();
+   if (data.mensaje) {
+     alert(`${tipo.charAt(0).toUpperCase() + tipo.slice(1)} eliminado correctamente`);
+     listar(tipo);  // Recargar la lista después de eliminar
+   } else {
+     alert(`Error al eliminar el ${tipo}`);
+   }
+ }
+
+
+ async function agregarRol() {
+  const nombreRol = document.getElementById('nombreRol').value;
+  
+  const res = await fetch('/addrol', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ nombre_rol: nombreRol }) // Asegúrate de que el campo sea nombre_rol
+  });
+
+  const data = await res.json();
+  if (data.mensaje) { // Asegúrate de verificar si la respuesta tiene el mensaje correcto
+    alert(data.mensaje);
+    listar('roles');  // Recargar la lista de roles
+  } else {
+    alert('Error al agregar el rol');
+  }
+}
+
+async function agregarPermiso() {
+  const nombrePermiso = document.getElementById('nombrePermiso').value;
+  
+  const res = await fetch('/addpermisos', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ nombre_permiso: nombrePermiso }) // Asegúrate de que el campo sea nombre_permiso
+  });
+
+  const data = await res.json();
+  if (data.mensaje) { // Verifica que la respuesta tenga el mensaje
+    alert(data.mensaje);
+    listar('permisos');  // Recargar la lista de permisos
+  } else {
+    alert('Error al agregar el permiso');
+  }
+}
+
+  </script>
+</body>
+</html>

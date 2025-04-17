@@ -1,7 +1,7 @@
 <?php
 $host = "127.0.0.1"; //localhost
 $usuario = "root";
-$clave = "";
+$clave = "1234";
 $bd = "tareasdb";
 
 function conectar(){

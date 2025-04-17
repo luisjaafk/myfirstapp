@@ -7,6 +7,14 @@ require_once '../app/agregar_roles.php';
 require_once '../app/agregar_permiso.php'; 
 require_once '../app/PermisoToRol.php'; 
 
+//ignorar composer.json y .lock
+//git rm --cached composer.json composer.lock
+//composer.json composer.lock
+//git add .gitignore git commit -m "Ignorar composer.json y composer.lock"
+//git push origin main
+
+
+
 header('Content-Type: application/json');
 
 $request = json_decode(file_get_contents("php://input"), true);
